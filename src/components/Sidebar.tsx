@@ -23,21 +23,29 @@ interface Counts {
 
 type Variant = 'default' | 'warning' | 'error'
 
+interface NavItem {
+  name: string
+  href: string
+  icon: React.ComponentType<{ size?: number }>
+  count?: (c: Counts) => number
+  variant?: Variant
+}
+
 const BADGE_STYLES: Record<Variant, string> = {
   default: 'bg-teal-500/20 text-teal-300',
   warning: 'bg-amber-500/20 text-amber-300',
   error:   'bg-red-500/20  text-red-300',
 }
 
-const NAV = [
+const NAV: NavItem[] = [
   { name: 'Dashboard', href: '/',          icon: LayoutDashboard },
-  { name: 'Schedule',  href: '/schedule',  icon: Calendar,   count: (c: Counts) => c.schedule,  variant: 'default' as Variant },
-  { name: 'Jobs',      href: '/jobs',      icon: Briefcase,  count: (c: Counts) => c.jobs,      variant: 'default' as Variant },
+  { name: 'Schedule',  href: '/schedule',  icon: Calendar,   count: (c) => c.schedule,  variant: 'default' },
+  { name: 'Jobs',      href: '/jobs',      icon: Briefcase,  count: (c) => c.jobs,      variant: 'default' },
   { name: 'Route',     href: '/route',     icon: Map },
   { name: 'Customers', href: '/customers', icon: Users },
-  { name: 'Leads',     href: '/leads',     icon: UserPlus,   count: (c: Counts) => c.leads,     variant: 'warning' as Variant },
-  { name: 'Estimates', href: '/estimates', icon: FileText,   count: (c: Counts) => c.estimates, variant: 'default' as Variant },
-  { name: 'Invoices',  href: '/invoices',  icon: Receipt,    count: (c: Counts) => c.invoices,  variant: 'error'   as Variant },
+  { name: 'Leads',     href: '/leads',     icon: UserPlus,   count: (c) => c.leads,     variant: 'warning' },
+  { name: 'Estimates', href: '/estimates', icon: FileText,   count: (c) => c.estimates, variant: 'default' },
+  { name: 'Invoices',  href: '/invoices',  icon: Receipt,    count: (c) => c.invoices,  variant: 'error'   },
   { name: 'Time',      href: '/time',      icon: Clock },
   { name: 'Expenses',  href: '/expenses',  icon: DollarSign },
   { name: 'Reports',   href: '/reports',   icon: TrendingUp },
@@ -116,7 +124,7 @@ export function Sidebar() {
         <nav className="p-2 space-y-1 overflow-y-auto h-[calc(100vh-8rem)]">
           {NAV.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
-            const badge = 'count' in item ? item.count(counts) : 0
+            const badge = item.count?.(counts) ?? 0
             const showBadge = badge > 0
             return (
               <Link key={item.href} href={item.href}
@@ -146,7 +154,7 @@ export function Sidebar() {
                     isCollapsed
                       ? 'absolute -top-0.5 -right-0.5 w-4 h-4 flex items-center justify-center text-[10px]'
                       : 'ml-auto px-2 py-0.5',
-                    BADGE_STYLES[('variant' in item ? item.variant : 'default') as Variant],
+                    BADGE_STYLES[item.variant ?? 'default'],
                   )}>
                     {badge > 99 ? '99+' : badge}
                   </span>
