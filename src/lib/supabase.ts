@@ -4,7 +4,6 @@ import { SupabaseClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
-// Lazy-init browser client with cookie support for SSR
 let _supabase: SupabaseClient | null = null
 
 function getSupabase(): SupabaseClient {
@@ -23,9 +22,9 @@ export const supabase = new Proxy({} as SupabaseClient, {
   }
 })
 
-// Database types
 export interface Customer {
   id: string
+  company_id: string
   name: string
   email: string | null
   phone: string | null
@@ -43,6 +42,7 @@ export interface Customer {
 
 export interface Employee {
   id: string
+  company_id: string
   name: string
   email: string
   phone: string | null
@@ -55,6 +55,7 @@ export interface Employee {
 
 export interface Estimate {
   id: string
+  company_id: string
   customer_id: string
   customer?: Customer
   title: string
@@ -83,14 +84,15 @@ export interface LineItem {
 
 export interface Job {
   id: string
+  company_id: string
   customer_id: string
   customer?: Customer
   estimate_id: string | null
-  assigned_to: string[] // employee ids
+  assigned_to: string[]
   employees?: Employee[]
   title: string
   description: string | null
-  job_type: string | null
+  job_type_id: string | null
   scheduled_date: string | null
   scheduled_time: string | null
   end_time: string | null
@@ -119,6 +121,7 @@ export interface ChecklistItem {
 
 export interface TimeEntry {
   id: string
+  company_id: string
   job_id: string
   employee_id: string
   employee?: Employee
@@ -131,6 +134,7 @@ export interface TimeEntry {
 
 export interface Expense {
   id: string
+  company_id: string
   job_id: string | null
   employee_id: string | null
   category: string
@@ -145,6 +149,7 @@ export interface Expense {
 
 export interface Invoice {
   id: string
+  company_id: string
   job_id: string | null
   customer_id: string
   customer?: Customer
@@ -168,6 +173,7 @@ export interface Invoice {
 
 export interface Lead {
   id: string
+  company_id: string
   name: string
   email: string | null
   phone: string | null
@@ -184,6 +190,7 @@ export interface Lead {
 
 export interface Notification {
   id: string
+  company_id: string
   type: 'reminder' | 'job_update' | 'payment' | 'system'
   title: string
   message: string
@@ -194,6 +201,7 @@ export interface Notification {
 
 export interface Settings {
   id: string
+  company_id: string
   company_name: string
   company_email: string | null
   company_phone: string | null
