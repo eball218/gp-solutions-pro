@@ -8,7 +8,6 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'GP Solutions - Field Service Management',
   description: 'Professional field service management software for contractors',
-  manifest: '/manifest.json',
 }
 
 export const viewport: Viewport = {
