@@ -44,7 +44,9 @@ export default function SignupPage() {
     }
 
     try {
-      // Create auth user
+      // Create auth user. The database trigger handle_new_user() will
+      // automatically create a companies row and link this user as admin.
+      // The metadata passed here is used by that trigger.
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -58,21 +60,20 @@ export default function SignupPage() {
 
       if (authError) throw authError
 
-      // Create employee record
+      // NOTE: company + employee rows are created by the DB trigger
+      // handle_new_user() — no client-side inserts needed.
+      // Any client-side insert here would be redundant and could fail
+      // due to the trigger already running. See
+      // supabase/migrations/0002_auto_provision_company_on_signup.sql
+
       if (authData.user) {
-        const { error: employeeError } = await supabase.from('employees').insert({
-          id: authData.user.id,
-          name: formData.fullName,
-          email: formData.email,
-          role: 'admin',
-        })
-        
-        // Create default settings
+        // Optionally update settings with company name if trigger didn't.
+        // This is idempotent — upsert is safe.
         await supabase.from('settings').upsert({
-          id: authData.user.id,
+          company_id: authData.user.id, // will be matched by trigger
           company_name: formData.companyName,
           company_email: formData.email,
-        })
+        }).select()
       }
 
       setSuccess(true)
@@ -83,8 +84,9 @@ export default function SignupPage() {
         router.refresh()
       }, 2000)
 
-    } catch (err: any) {
-      setError(err.message || 'Failed to create account')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to create account'
+      setError(msg)
     } finally {
       setLoading(false)
     }
@@ -110,7 +112,6 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-stone-100 via-stone-50 to-teal-50/30 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-gradient-to-br from-teal-400 to-teal-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4 shadow-lg shadow-teal-500/30">
             GP
@@ -119,7 +120,6 @@ export default function SignupPage() {
           <p className="text-stone-500 mt-1">Start your 14-day free trial</p>
         </div>
 
-        {/* Signup Form */}
         <div className="bg-white rounded-2xl shadow-xl shadow-stone-200/50 border border-stone-200/50 p-8">
           <form onSubmit={handleSignup} className="space-y-5">
             {error && (
@@ -129,65 +129,38 @@ export default function SignupPage() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">
-                Company Name
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.companyName}
+              <label className="block text-sm font-medium text-stone-700 mb-1">Company Name</label>
+              <input type="text" required value={formData.companyName}
                 onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                placeholder="Acme HVAC Services"
-              />
+                placeholder="Acme HVAC Services" />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">
-                Your Name
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.fullName}
+              <label className="block text-sm font-medium text-stone-700 mb-1">Your Name</label>
+              <input type="text" required value={formData.fullName}
                 onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                placeholder="John Smith"
-              />
+                placeholder="John Smith" />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">
-                Email
-              </label>
-              <input
-                type="email"
-                required
-                value={formData.email}
+              <label className="block text-sm font-medium text-stone-700 mb-1">Email</label>
+              <input type="email" required value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                placeholder="you@company.com"
-              />
+                placeholder="you@company.com" />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">
-                Password
-              </label>
+              <label className="block text-sm font-medium text-stone-700 mb-1">Password</label>
               <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={formData.password}
+                <input type={showPassword ? 'text' : 'password'} required value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent pr-12"
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
-                >
+                  placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" />
+                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600">
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
@@ -202,24 +175,15 @@ export default function SignupPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">
-                Confirm Password
-              </label>
-              <input
-                type="password"
-                required
-                value={formData.confirmPassword}
+              <label className="block text-sm font-medium text-stone-700 mb-1">Confirm Password</label>
+              <input type="password" required value={formData.confirmPassword}
                 onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                placeholder="••••••••"
-              />
+                placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" />
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-gradient-to-r from-teal-500 to-teal-600 text-white rounded-xl font-medium hover:from-teal-600 hover:to-teal-700 transition-all shadow-lg shadow-teal-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
+            <button type="submit" disabled={loading}
+              className="w-full py-3 bg-gradient-to-r from-teal-500 to-teal-600 text-white rounded-xl font-medium hover:from-teal-600 hover:to-teal-700 transition-all shadow-lg shadow-teal-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
               {loading && <Loader2 className="animate-spin" size={20} />}
               {loading ? 'Creating account...' : 'Create account'}
             </button>
