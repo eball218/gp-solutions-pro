@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils'
 interface Counts {
   schedule:  number
   jobs:      number
+  customers: number
   leads:     number
   estimates: number
   invoices:  number
@@ -42,7 +43,7 @@ const NAV: NavItem[] = [
   { name: 'Schedule',  href: '/schedule',  icon: Calendar,   count: (c) => c.schedule,  variant: 'default' },
   { name: 'Jobs',      href: '/jobs',      icon: Briefcase,  count: (c) => c.jobs,      variant: 'default' },
   { name: 'Route',     href: '/route',     icon: Map },
-  { name: 'Customers', href: '/customers', icon: Users },
+  { name: 'Customers', href: '/customers', icon: Users,      count: (c) => c.customers, variant: 'default' },
   { name: 'Leads',     href: '/leads',     icon: UserPlus,   count: (c) => c.leads,     variant: 'warning' },
   { name: 'Estimates', href: '/estimates', icon: FileText,   count: (c) => c.estimates, variant: 'default' },
   { name: 'Invoices',  href: '/invoices',  icon: Receipt,    count: (c) => c.invoices,  variant: 'error'   },
@@ -54,30 +55,43 @@ const NAV: NavItem[] = [
 export function Sidebar() {
   const pathname = usePathname()
   const { sidebarOpen, setSidebarOpen, sidebarCollapsed, setSidebarCollapsed } = useStore()
-  const [counts, setCounts] = useState<Counts>({ schedule: 0, jobs: 0, leads: 0, estimates: 0, invoices: 0 })
+  const [counts, setCounts] = useState<Counts>({ schedule: 0, jobs: 0, customers: 0, leads: 0, estimates: 0, invoices: 0 })
 
   useEffect(() => {
     async function refresh() {
       const today = new Date().toISOString().split('T')[0]
-      const [
-        { count: sched },
-        { count: jobs  },
-        { count: leads },
-        { count: ests  },
-        { count: invs  },
-      ] = await Promise.all([
-        supabase.from('jobs').select('*', { count: 'exact', head: true })
-          .eq('scheduled_date', today).not('status', 'eq', 'cancelled'),
-        supabase.from('jobs').select('*', { count: 'exact', head: true })
-          .in('status', ['scheduled', 'in_progress']),
-        supabase.from('leads').select('*', { count: 'exact', head: true })
-          .not('status', 'in', '("won","lost")'),
-        supabase.from('estimates').select('*', { count: 'exact', head: true })
-          .in('status', ['draft', 'sent']),
-        supabase.from('invoices').select('*', { count: 'exact', head: true })
-          .in('status', ['sent', 'partial', 'overdue']),
-      ])
-      setCounts({ schedule: sched ?? 0, jobs: jobs ?? 0, leads: leads ?? 0, estimates: ests ?? 0, invoices: invs ?? 0 })
+      try {
+        const [
+          { count: sched },
+          { count: jobs  },
+          { count: custs },
+          { count: leads },
+          { count: ests  },
+          { count: invs  },
+        ] = await Promise.all([
+          supabase.from('jobs').select('*', { count: 'exact', head: true })
+            .eq('scheduled_date', today).not('status', 'eq', 'cancelled'),
+          supabase.from('jobs').select('*', { count: 'exact', head: true })
+            .in('status', ['scheduled', 'in_progress']),
+          supabase.from('customers').select('*', { count: 'exact', head: true }),
+          supabase.from('leads').select('*', { count: 'exact', head: true })
+            .not('status', 'in', '("won","lost")'),
+          supabase.from('estimates').select('*', { count: 'exact', head: true })
+            .in('status', ['draft', 'sent']),
+          supabase.from('invoices').select('*', { count: 'exact', head: true })
+            .in('status', ['sent', 'partial', 'overdue']),
+        ])
+        setCounts({
+          schedule:  sched ?? 0,
+          jobs:      jobs  ?? 0,
+          customers: custs ?? 0,
+          leads:     leads ?? 0,
+          estimates: ests  ?? 0,
+          invoices:  invs  ?? 0,
+        })
+      } catch (err) {
+        console.error('sidebar counts error:', err)
+      }
     }
     refresh()
     const id = setInterval(refresh, 60_000)
